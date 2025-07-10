@@ -1,0 +1,12 @@
+.env
+.env.example
+.env.local
+.env.development
+.env.test
+.env.prod
+.env.production
+backup2.sql
+backup3.sql
+backup4.sql
+directus-backup.sql
+data

@@ -1,0 +1,127 @@
+name: directus-lore-meme
+services:
+  database:
+    image: postgis/postgis:16-master
+    platform: linux/amd64
+    container_name: fresh_db
+    command: postgres -c "listen_addresses=*"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/database:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cache:
+    image: redis:6
+    container_name: cache-lore-meme
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "[ $$(redis-cli ping) = 'PONG' ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  directus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: directus-lore-meme
+    ports:
+      - "${DIRECTUS_PORT:-8055}:8055"
+    depends_on:
+      database:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    volumes:
+      # IMPORTANT: Map your template directory
+      - ./template:/directus/template
+      - ./templates:/directus/templates
+      - ./extensions:/directus/extensions
+      - ./uploads:/directus/uploads
+
+ 
+    
+    env_file:
+        - .env
+    environment:
+      # Core Directus
+      KEY: ${KEY}
+      SECRET: ${SECRET}
+      
+      # Database
+      DB_CLIENT: "pg"
+      DB_HOST: "database"
+      DB_PORT: "5432"
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      
+      # Cache
+      CACHE_ENABLED: "true"
+      CACHE_STORE: "redis"
+      REDIS: "redis://cache:6379"
+      
+      # Admin
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      
+      # URLs and CORS
+      PUBLIC_URL: ${PUBLIC_URL}
+      CORS_ENABLED: "true"
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      
+      # Email Configuration - OPTION 1: STARTTLS (PORT 587)
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME}
+      EMAIL_TRANSPORT: ${EMAIL_TRANSPORT}
+      EMAIL_SMTP_HOST: ${SMTP_HOST}
+      EMAIL_SMTP_PORT: 587
+      EMAIL_SMTP_USER: ${SMTP_USER}
+      EMAIL_SMTP_PASSWORD: ${SMTP_PASSWORD}
+      EMAIL_SMTP_SECURE: "false"
+      EMAIL_SMTP_REQUIRE_TLS: "true"
+      SMTP_FROM_NAME: "lore team"
+      EMAIL_SENDER_NAME: "lore team"
+      # Template Configuration
+      EMAIL_TEMPLATE_DIRECTORY: "/directus/template"
+      
+      # Password Reset
+      PASSWORD_RESET_URL_ALLOW_LIST: ${PASSWORD_RESET_URL_ALLOW_LIST}
+      
+      # Extensions
+      EXTENSIONS_PATH: "/directus/extensions"
+      EXTENSIONS_AUTO_RELOAD: "true"
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}     
+    networks:
+      - app-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin-lore-meme
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-d1r3ctu5}
+    depends_on:
+      - database
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
