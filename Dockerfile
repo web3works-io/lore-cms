@@ -19,8 +19,11 @@ RUN pnpm add @directus/sdk
 # A more typical approach for extensions is to build them outside the container and copy them in.
 # However, based on your request to 'npm install directus-extension-api-docs', this is the command.
 # Consider consulting the directus-extension-api-docs documentation for the recommended installation method.
-RUN pnpm add directus-extension-api-docs
 
 
-COPY extensions /directus/extensions
 
+# Ensure restore script is executable
+# Copy custom extensions and templates (optional, adjust paths as needed)
+COPY ./extensions /directus/extensions
+COPY ./template /directus/template
+COPY ./templates /directus/templates
